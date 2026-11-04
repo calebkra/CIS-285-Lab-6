@@ -1,0 +1,25 @@
+@startuml
+title Expense Submission and Approval Sequence (proposed)
+actor Submitter
+participant "Client (Swing or web/mobile)" as Client
+participant "Expense service" as Service
+participant "Group / policy" as Policy
+database "Transactional records" as DB
+participant "Outbox dispatcher" as Outbox
+participant "Notification channel" as Notify
+Submitter -> Client : submit expense + idempotency key
+Client -> Service : command
+Service -> Policy : authorize; resolve members/policy
+Policy --> Service : authorized + policy snapshot
+Service -> Service : validate and calculate exact shares
+Service -> DB : transaction: expense + shares + policy + outbox
+DB --> Service : committed pending expense
+Service --> Client : pending status (no balance change)
+Outbox -> DB : read committed notice intent
+Outbox -> Notify : deliver with dedupe identity
+Notify --> Outbox : delivery outcome
+note over Service,DB
+Final approval decision and expense ledger posting must commit
+in one transaction. Retries cannot post twice.
+end note
+@enduml

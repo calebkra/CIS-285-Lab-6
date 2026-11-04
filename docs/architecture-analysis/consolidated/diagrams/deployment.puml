@@ -1,0 +1,30 @@
+@startuml
+title SplitSmart Deployment Topology (proposed; no provider selected)
+left to right direction
+package "Java Swing MVP" {
+ node "User desktop" {
+  artifact "Java 21 Swing application\nGUI-independent domain" as Desktop
+ }
+ database "Local or remote persistence\nmode open" as MVPStore
+ Desktop --> MVPStore
+}
+package "Complete customer product" {
+ node "Browser" as Browser
+ node "Android device" as Android
+ node "iOS device" as IOS
+ node "Shared authenticated service\nproposed" as Service
+ database "Transactional records\nproposed" as DB
+ cloud "Private receipt storage\nproposed" as Receipt
+ cloud "Identity / notification\nadapters (unselected)" as External
+ Browser --> Service : secure client-service link
+ Android --> Service
+ IOS --> Service
+ Service --> DB
+ Service --> Receipt
+ Service --> External
+}
+note bottom
+Packaging, hosting, signing, distribution, backup, monitoring,
+ownership and recovery choices remain open.
+end note
+@enduml

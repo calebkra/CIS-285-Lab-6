@@ -1,0 +1,66 @@
+@startuml
+title SplitSmart Logical Data Model (proposed)
+hide methods
+entity UserAccount {
+ * user_id : ID
+ --
+ normalized_email : unique
+ credential_reference
+ email_verified_at
+}
+entity Group {
+ * group_id : ID
+ name
+}
+entity GroupMembership {
+ * group_id : FK
+ * user_id : FK
+ role, status, joined_at, left_at
+}
+entity Expense {
+ * expense_id : ID
+ group_id, submitter_id, payer_id : FK
+ amount, currency, date, status, version
+}
+entity ExpenseShare {
+ * expense_id, participant_id : FK
+ selection_order, share_amount
+}
+entity ExpenseApproval {
+ * approval_id : ID
+ expense_id, reviewer_id : FK
+ step, decision, decision_at
+}
+entity LedgerEntry {
+ * ledger_entry_id : ID
+ group_id, currency, user_id
+ source_id, role, signed_amount
+}
+entity Payment {
+ * payment_id : ID
+ group_id, from_id, to_id : FK
+ amount, currency, idempotency_key
+}
+entity Receipt {
+ * receipt_id : ID
+ private_storage_key
+}
+entity Notification {
+ * notification_id : ID
+ recipient_id, event_key, status
+}
+entity BalanceProjection {
+ group_id, currency
+ debtor, creditor, due, as_of_version
+}
+Group ||--o{ GroupMembership
+UserAccount ||--o{ GroupMembership
+Group ||--o{ Expense
+Expense ||--|{ ExpenseShare
+Expense ||--o{ ExpenseApproval
+Expense ||--o| Receipt
+Expense ||--o{ LedgerEntry
+Payment ||--|{ LedgerEntry
+Group ||--o{ Payment
+LedgerEntry }o..o{ BalanceProjection : rebuild
+@enduml

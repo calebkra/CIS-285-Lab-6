@@ -1,0 +1,16 @@
+@startuml
+title Expense Lifecycle (required states; proposed transitions)
+[*] --> PENDING_REVIEW : submit valid expense
+PENDING_REVIEW --> PENDING_REVIEW : approval recorded; more required
+PENDING_REVIEW --> APPROVED : final required approval / post ledger atomically
+PENDING_REVIEW --> REJECTED : authorized rejection
+APPROVED --> [*]
+REJECTED --> [*]
+note right of PENDING_REVIEW
+No balance or ledger effect while pending.
+Duplicate decisions/postings are prevented.
+end note
+note right of REJECTED
+No financial effect.
+end note
+@enduml

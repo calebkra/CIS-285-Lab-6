@@ -1,0 +1,31 @@
+@startuml
+title Expense and Receipt Data Flow (proposed)
+actor Submitter
+participant "Client" as Client
+participant "Expense service" as Service
+database "Transactional records" as DB
+collections "Private receipt store" as Files
+participant "Outbox worker" as Worker
+participant "Notification channel" as Notify
+Submitter -> Client : expense fields + optional receipt
+Client -> Service : authenticated submission
+Service -> Service : authorize and validate membership/split
+opt Receipt attached
+ Service -> Files : stage private object
+ Files --> Service : storage reference
+end
+Service -> DB : atomic expense + shares + approval state + notice intent
+DB --> Service : commit
+Service --> Client : pending result; no balance effect
+Worker -> DB : fetch committed notice intent
+Worker -> Notify : deduplicated delivery to other members
+Notify --> Worker : delivered / retryable failure
+opt Persistence fails after receipt stage
+ Service -> Files : compensate/delete staged object
+end
+note over DB,Worker
+Financial transaction commits before notification delivery.
+Notification failure cannot roll back committed records.
+Reconcile orphan receipts and retry outbox items.
+end note
+@enduml

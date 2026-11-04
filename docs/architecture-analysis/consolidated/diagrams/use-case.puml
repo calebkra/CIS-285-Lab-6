@@ -1,0 +1,29 @@
+@startuml
+title SplitSmart Use Cases (proposed)
+left to right direction
+actor User
+actor Organizer
+actor Approver
+rectangle "SplitSmart product" {
+ usecase "Register, verify, sign in\nand recover account" as Auth
+ usecase "Manage group\nand membership" as Group
+ usecase "Submit expense\nand receipt" as Submit
+ usecase "Review / approve\nor reject expense" as Review
+ usecase "View balances\nand payment history" as Balance
+ usecase "Record partial/full\nsettlement" as Pay
+ usecase "Receive expense notice" as Notice
+ usecase "View summaries\nand date-range reports" as Report
+}
+User --> Auth
+User --> Submit
+User --> Balance
+User --> Pay
+User --> Notice
+User --> Report
+Organizer --> Group
+Approver --> Review
+note bottom
+Use cases describe required behavior; service and UI are proposed.
+Swing desktop use does not satisfy web/Android/iOS coverage.
+end note
+@enduml

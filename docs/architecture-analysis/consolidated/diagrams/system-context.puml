@@ -1,0 +1,32 @@
+@startuml
+title SplitSmart System Context (proposed)
+left to right direction
+actor "Individual user" as User
+actor "Group organizer" as Organizer
+actor "Expense approver" as Approver
+rectangle "SplitSmart product" {
+ component "Java Swing MVP\n(desktop slice)" as Swing
+ component "Shared service\n(proposed complete product)" as Service
+}
+actor "Web client" as Web
+actor "Android client" as Android
+actor "iOS client" as IOS
+cloud "Identity / email\nprovider (unselected)" as Identity
+cloud "Private receipt\nstorage (proposed)" as Receipt
+cloud "Notification delivery\n(unselected)" as Notify
+User --> Swing : MVP use
+User --> Web : complete product
+User --> Android
+User --> IOS
+Organizer --> Service : manage group
+Approver --> Service : review expense
+Web --> Service
+Android --> Service
+IOS --> Service
+Service --> Identity : authenticate / recover
+Service --> Receipt : private authorized content
+Service --> Notify : post-commit notices
+note bottom of Service
+No backend, API, provider, or client is verified as implemented.
+end note
+@enduml

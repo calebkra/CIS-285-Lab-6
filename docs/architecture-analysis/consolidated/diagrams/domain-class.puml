@@ -1,0 +1,42 @@
+@startuml
+title SplitSmart Domain Class Model (proposed)
+class UserAccount
+class Group
+class GroupMembership
+class Expense {
+ amount: BigDecimal
+ currency: Currency
+ status: ExpenseStatus
+}
+class ExpenseShare {
+ amount: BigDecimal
+ selectionOrder: int
+}
+class ExpenseApproval
+class ReviewPolicy
+class LedgerEntry
+class Payment {
+ amount: BigDecimal
+ idempotencyKey: String
+}
+class BalanceProjection
+class Receipt
+class Notification
+UserAccount "1" -- "*" GroupMembership
+Group "1" -- "*" GroupMembership
+Group "1" -- "*" Expense
+Expense "1" --> "1" UserAccount : submitter
+Expense "1" --> "1" UserAccount : payer
+Expense "1" -- "1..*" ExpenseShare
+Expense "1" -- "0..*" ExpenseApproval
+ReviewPolicy "1" -- "*" ExpenseApproval : version snapshot
+Expense "1" -- "0..1" Receipt
+Expense "1" -- "*" LedgerEntry : only after approval
+Payment "1" -- "*" LedgerEntry
+Group "1" -- "*" Payment
+Group "1" -- "*" Notification
+BalanceProjection ..> LedgerEntry : rebuildable from
+note bottom
+Conceptual model only; not implemented schema.
+end note
+@enduml

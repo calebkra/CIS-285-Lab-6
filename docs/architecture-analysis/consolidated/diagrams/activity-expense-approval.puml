@@ -1,0 +1,31 @@
+@startuml
+title Expense Submission and Approval Activity (proposed)
+|Submitter|
+start
+:Enter amount, date, description, payer, participants, split;
+:Optionally attach receipt;
+|Application service|
+:Authorize group membership;
+:Validate payer, participants, positive amount and split;
+if (Valid?) then (yes)
+ :Calculate deterministic exact shares;
+ :Commit pending expense, shares, policy snapshot and notice intent;
+|Approver|
+ :Review pending expense;
+ if (Decision?) then (reject)
+  |Application service|
+  :Record rejection atomically;
+ else (approve)
+  :Record decision;
+  if (All required approvals?) then (yes)
+   :Atomically approve and post ledger;
+  else (no)
+   :Remain pending; no ledger effect;
+  endif
+ endif
+ :Deliver notice asynchronously;
+else (no)
+ :Return clear validation error;
+endif
+stop
+@enduml

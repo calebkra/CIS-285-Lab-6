@@ -1,0 +1,29 @@
+@startuml
+title Balance, Expense Posting, and Payment Settlement (proposed)
+left to right direction
+rectangle "Approved expense" as Expense
+rectangle "Payer credit\n+amount paid" as Credit
+rectangle "Participant share debits\n− allocated shares" as Debits
+rectangle "Authoritative ledger\n(group + currency scoped)" as Ledger
+rectangle "Rebuildable balance projection" as Balance
+rectangle "Payment request" as Request
+rectangle "Transactional due check\n(idempotent + concurrency safe)" as Check
+rectangle "Payment + offsetting ledger\neffect committed atomically" as Payment
+rectangle "Updated amount due" as Due
+Expense --> Credit
+Expense --> Debits
+Credit --> Ledger
+Debits --> Ledger
+Ledger --> Balance
+Request --> Check
+Balance --> Check : current due re-read in transaction
+Check --> Payment : amount <= due
+Payment --> Ledger
+Balance --> Due
+Payment --> Due
+note bottom
+Payer may be a participant; their share offsets payer credit.
+Pending/rejected expense has no ledger posting. Excess payment is rejected.
+No cross-currency arithmetic without approved conversion.
+end note
+@enduml

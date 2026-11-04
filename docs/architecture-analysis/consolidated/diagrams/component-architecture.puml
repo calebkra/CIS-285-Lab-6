@@ -1,0 +1,37 @@
+@startuml
+title SplitSmart Component Architecture (proposed)
+left to right direction
+package "Java Swing MVP" {
+ [Swing presentation] as UI
+ [GUI-independent application use cases] as App
+ [Domain: expense, approval, ledger, payment] as Domain
+ [MVP adapters: persistence / receipt / notice] as Adapters
+ UI --> App
+ App --> Domain
+ App --> Adapters
+}
+package "Complete product (proposed)" {
+ [Web client] as Web
+ [Android client] as Droid
+ [iOS client] as Apple
+ [Authenticated shared service] as API
+ [Identity boundary] as Id
+ [Transactional records] as DB
+ [Private receipt store] as Files
+ [Outbox and notification adapter] as Outbox
+ [Authorized report queries] as Reports
+ Web --> API
+ Droid --> API
+ Apple --> API
+ API --> Id
+ API --> DB
+ API --> Files
+ API --> Outbox
+ API --> Reports
+ Reports --> DB
+}
+note bottom of API
+Proposed logical boundary; no API, database, backend, or client
+is verified as implemented.
+end note
+@enduml

@@ -1,0 +1,33 @@
+@startuml
+title SplitSmart Security Trust Boundaries (proposed)
+left to right direction
+actor User
+rectangle "Untrusted client boundary" {
+ component "Swing / Web / Android / iOS UI" as Client
+}
+rectangle "Authenticated service boundary" {
+ component "Session validation" as Session
+ component "Server-side authorization\n(group + resource + role)" as Authz
+ component "Domain/application rules" as Domain
+}
+rectangle "Protected data boundary" {
+ database "Transactional records\nand audit history" as DB
+ storage "Private receipt objects" as Files
+ component "Outbox / notification adapter" as Outbox
+}
+cloud "Identity and recovery\nprovider (unselected)" as Identity
+cloud "Email / push channel\n(unselected)" as Channel
+User --> Client
+Client --> Session : encrypted service request
+Session --> Identity : verify / recover
+Session --> Authz
+Authz --> Domain : authorized command
+Domain --> DB : scoped transaction
+Domain --> Files : authorized receipt operation
+Domain --> Outbox : post-commit intent
+Outbox --> Channel : minimal sensitive content
+note bottom of Authz
+Never trust client-supplied user/group scope;
+deny cross-account and cross-group access.
+end note
+@enduml
