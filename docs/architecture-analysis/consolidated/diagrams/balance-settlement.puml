@@ -3,27 +3,40 @@ title Balance, Expense Posting, and Payment Settlement (proposed)
 left to right direction
 rectangle "Approved expense" as Expense
 rectangle "Payer credit\n+amount paid" as Credit
-rectangle "Participant share debits\n− allocated shares" as Debits
-rectangle "Authoritative ledger\n(group + currency scoped)" as Ledger
-rectangle "Rebuildable balance projection" as Balance
+rectangle "Participant share debits\n- allocated shares" as Debits
+rectangle "Authoritative ledger / transactional\nfinancial records (source of truth)" as Ledger
+rectangle "Rebuildable balance projection\n(derived read model; may be stale)" as Balance
 rectangle "Payment request" as Request
-rectangle "Transactional due check\n(idempotent + concurrency safe)" as Check
-rectangle "Payment + offsetting ledger\neffect committed atomically" as Payment
+rectangle "Authenticate and authorize actor" as Auth
+rectangle "Begin payment transaction" as Begin
+rectangle "Read authoritative outstanding amount\ninside transaction" as ReadDue
+rectangle "Check requested amount against\ncurrent outstanding amount" as Check
+rectangle "Reject excess; return current\namount due; no financial effect" as Reject
+rectangle "Commit payment and ledger effect\natomically; deduplicate request" as Payment
+rectangle "Update or invalidate projection,\nthen commit transaction" as Commit
 rectangle "Updated amount due" as Due
 Expense --> Credit
 Expense --> Debits
 Credit --> Ledger
 Debits --> Ledger
-Ledger --> Balance
-Request --> Check
-Balance --> Check : current due re-read in transaction
-Check --> Payment : amount <= due
+Ledger --> Balance : derive / rebuild
+Request --> Auth
+Auth --> Begin
+Begin --> ReadDue
+Ledger --> ReadDue
+ReadDue --> Check
+Check --> Reject : amount > current due
+Check --> Payment : 0 < amount <= current due
 Payment --> Ledger
-Balance --> Due
-Payment --> Due
+Payment --> Commit
+Commit --> Balance : update or invalidate
+Commit --> Due
+Balance --> Due : read only; not payment authority
 note bottom
 Payer may be a participant; their share offsets payer credit.
-Pending/rejected expense has no ledger posting. Excess payment is rejected.
+Pending/rejected expense has no ledger posting. Duplicate requests
+cannot create duplicate effects. Concurrent payment control is required;
+locking/isolation/version strategy depends on persistence technology.
 No cross-currency arithmetic without approved conversion.
 end note
 @enduml

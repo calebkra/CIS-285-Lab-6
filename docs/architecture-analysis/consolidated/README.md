@@ -45,4 +45,4 @@ All diagrams use PlantUML source. Every proposed component is labeled as such in
 
 ## Validation status
 
-The Markdown local-link check passed. PlantUML rendering and visual inspection remain mandatory and outstanding: Java, Maven, PlantUML, and Graphviz were not found on PATH, and a local PlantUML JAR was not found in the checked locations. Sources received only a framing check; no parser or rendered output was available. Therefore this package is not fully validated. See [validation plan](validation-plan.md). No tests are claimed as run.
+For this documentation correction, all 12 PlantUML sources were reviewed and their start/end framing checked. An actual renderer/parser and rendered images were unavailable (Java, Maven, PlantUML, and Graphviz were not found on PATH); no rendering success or visual inspection is claimed. The activity, settlement, data-model, and domain-class diagrams were corrected, with submission sequence/data-flow recipient wording aligned. Static checks do not establish valid PlantUML syntax. See [validation plan](validation-plan.md) for the correction record and remaining checks. No application tests are claimed as run.

@@ -16,7 +16,7 @@ Service -> DB : transaction: expense + shares + policy + outbox
 DB --> Service : committed pending expense
 Service --> Client : pending status (no balance change)
 Outbox -> DB : read committed notice intent
-Outbox -> Notify : deliver with dedupe identity
+Outbox -> Notify : async deliver to eligible members except submitter; dedupe
 Notify --> Outbox : delivery outcome
 note over Service,DB
 Final approval decision and expense ledger posting must commit

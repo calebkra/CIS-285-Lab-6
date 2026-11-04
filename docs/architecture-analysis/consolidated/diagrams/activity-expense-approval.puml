@@ -1,5 +1,5 @@
 @startuml
-title Expense Submission and Approval Activity (proposed)
+title Expense Submission, Notification, and Approval Activity (proposed)
 |Submitter|
 start
 :Enter amount, date, description, payer, participants, split;
@@ -9,21 +9,36 @@ start
 :Validate payer, participants, positive amount and split;
 if (Valid?) then (yes)
  :Calculate deterministic exact shares;
- :Commit pending expense, shares, policy snapshot and notice intent;
-|Approver|
- :Review pending expense;
- if (Decision?) then (reject)
-  |Application service|
-  :Record rejection atomically;
- else (approve)
-  :Record decision;
-  if (All required approvals?) then (yes)
-   :Atomically approve and post ledger;
-  else (no)
-   :Remain pending; no ledger effect;
+ :Begin submission transaction;
+ :Persist expense as PENDING_REVIEW and exact shares;
+ :Persist applicable review-policy version snapshot;
+ :Persist notification/outbox intent for eligible group members;
+ :Commit transaction;
+ fork
+  |Notification worker|
+  :Read committed outbox intent;
+  :Deliver asynchronously to eligible group members;
+  note right
+   Exclude submitter. Retry transient failures;
+   deduplicate deliveries. Failure cannot roll back
+   the committed expense.
+  end note
+ fork again
+  |Approver|
+  :Review pending expense independently;
+  if (Decision?) then (reject)
+   |Application service|
+   :Record rejection atomically;
+  else (approve)
+   |Application service|
+   :Record decision;
+   if (All required approvals?) then (yes)
+    :Atomically approve and post ledger;
+   else (no)
+    :Remain pending; no ledger effect;
+   endif
   endif
- endif
- :Deliver notice asynchronously;
+ end fork
 else (no)
  :Return clear validation error;
 endif

@@ -7,13 +7,23 @@ class Expense {
  amount: BigDecimal
  currency: Currency
  status: ExpenseStatus
+ submittedPolicyVersion: long
 }
 class ExpenseShare {
  amount: BigDecimal
  selectionOrder: int
 }
-class ExpenseApproval
-class ReviewPolicy
+class ExpenseApproval {
+ decision: ApprovalDecision
+ stepOrder: int
+}
+class ReviewPolicy {
+ version: long
+}
+class ReviewStep {
+ order: int
+ reviewerRule: unresolved
+}
 class LedgerEntry
 class Payment {
  amount: BigDecimal
@@ -22,21 +32,26 @@ class Payment {
 class BalanceProjection
 class Receipt
 class Notification
-UserAccount "1" -- "*" GroupMembership
-Group "1" -- "*" GroupMembership
-Group "1" -- "*" Expense
-Expense "1" --> "1" UserAccount : submitter
-Expense "1" --> "1" UserAccount : payer
+UserAccount "1" -- "0..*" GroupMembership
+Group "1" -- "0..*" GroupMembership
+Group "1" -- "0..*" ReviewPolicy : versioned policies
+ReviewPolicy "1" *-- "1..*" ReviewStep : ordered steps
+Group "1" -- "0..*" Expense
+Expense "0..*" --> "1" ReviewPolicy : references/snapshots applicable version
+UserAccount "1" <-- "0..*" Expense : submitter
+UserAccount "1" <-- "0..*" Expense : payer
 Expense "1" -- "1..*" ExpenseShare
-Expense "1" -- "0..*" ExpenseApproval
-ReviewPolicy "1" -- "*" ExpenseApproval : version snapshot
+Expense "1" -- "0..*" ExpenseApproval : decisions in this review process
+ReviewStep "1" <-- "0..*" ExpenseApproval : decision for step
+UserAccount "1" <-- "0..*" ExpenseApproval : reviewer
 Expense "1" -- "0..1" Receipt
-Expense "1" -- "*" LedgerEntry : only after approval
-Payment "1" -- "*" LedgerEntry
-Group "1" -- "*" Payment
-Group "1" -- "*" Notification
+Expense "1" -- "0..*" LedgerEntry : only after approval
+Payment "1" -- "1..*" LedgerEntry
+Group "1" -- "0..*" Payment
 BalanceProjection ..> LedgerEntry : rebuildable from
 note bottom
-Conceptual model only; not implemented schema.
+Conceptual model only; not implemented schema. An expense retains its submitted
+policy version when group policy changes. Reviewer eligibility, self-approval,
+and policy-change treatment for pending expenses remain unresolved.
 end note
 @enduml

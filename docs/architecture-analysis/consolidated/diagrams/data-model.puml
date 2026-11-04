@@ -17,9 +17,21 @@ entity GroupMembership {
  * user_id : FK
  role, status, joined_at, left_at
 }
+entity ReviewPolicy {
+ * policy_id : ID
+ group_id : FK
+ version : versioned per group
+ effective metadata
+}
+entity ReviewStep {
+ * policy_id : FK
+ * step_order : ordered
+ reviewer rule/count (open)
+}
 entity Expense {
  * expense_id : ID
  group_id, submitter_id, payer_id : FK
+ policy_id, policy_version : submitted snapshot
  amount, currency, date, status, version
 }
 entity ExpenseShare {
@@ -28,8 +40,9 @@ entity ExpenseShare {
 }
 entity ExpenseApproval {
  * approval_id : ID
- expense_id, reviewer_id : FK
- step, decision, decision_at
+ expense_id, policy_id, policy_version : FK/snapshot
+ step_order, reviewer_id : FK
+ decision, decision_at
 }
 entity LedgerEntry {
  * ledger_entry_id : ID
@@ -55,12 +68,22 @@ entity BalanceProjection {
 }
 Group ||--o{ GroupMembership
 UserAccount ||--o{ GroupMembership
+Group ||--o{ ReviewPolicy : versions
+ReviewPolicy ||--|{ ReviewStep : ordered steps
 Group ||--o{ Expense
+Expense }o--|| ReviewPolicy : references submitted version
 Expense ||--|{ ExpenseShare
-Expense ||--o{ ExpenseApproval
+Expense ||--o{ ExpenseApproval : decisions in its review process
+ReviewStep ||--o{ ExpenseApproval : decision for step
+ExpenseApproval }o--|| UserAccount : reviewer
 Expense ||--o| Receipt
 Expense ||--o{ LedgerEntry
 Payment ||--|{ LedgerEntry
 Group ||--o{ Payment
 LedgerEntry }o..o{ BalanceProjection : rebuild
+note bottom
+Policy edits create versions; an already-submitted expense retains its
+applicable version and history. Self-approval, reviewer eligibility, and
+pending-expense policy-change behavior remain open; no rule is implied.
+end note
 @enduml

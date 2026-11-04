@@ -18,7 +18,7 @@ Service -> DB : atomic expense + shares + approval state + notice intent
 DB --> Service : commit
 Service --> Client : pending result; no balance effect
 Worker -> DB : fetch committed notice intent
-Worker -> Notify : deduplicated delivery to other members
+Worker -> Notify : async deduplicated delivery to eligible members except submitter
 Notify --> Worker : delivered / retryable failure
 opt Persistence fails after receipt stage
  Service -> Files : compensate/delete staged object
