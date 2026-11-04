@@ -1,0 +1,32 @@
+@startuml
+title Approved Expense and Payment Balance Effects (Both scopes; proposed)
+left to right direction
+
+rectangle "Approved Expense\namount A" as Expense
+rectangle "Payer credit\n+A" as Credit
+rectangle "Participant debit\n-share" as Debit
+rectangle "Exact ledger entries\nsum to zero" as Ledger
+rectangle "Group + currency net positions" as Net
+rectangle "Deterministic debtor/creditor\nmatching policy (approval needed)" as Match
+rectangle "Outstanding balance\nD owes C" as Due
+rectangle "Payment P from D to C\n0 < P <= due" as Payment
+rectangle "Updated balance\ndue - P" as Updated
+rectangle "Reject excess payment;\nshow amount due" as Reject
+
+Expense --> Credit
+Expense --> Debit
+Credit --> Ledger
+Debit --> Ledger
+Ledger --> Net
+Net --> Match
+Match --> Due
+Due --> Payment
+Payment --> Updated
+Due --> Reject : P > due
+
+note bottom
+  Payer may be a participant; their credit and own share debit offset.
+  Payment records settlement and does not initiate a money transfer.
+  Netting algorithm across multiple debtors/creditors is not defined by the spec.
+end note
+@enduml

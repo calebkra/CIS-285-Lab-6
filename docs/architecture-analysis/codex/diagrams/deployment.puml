@@ -1,0 +1,35 @@
+@startuml
+title SplitSmart deployment topology — proposed scopes
+node "MVP user desktop (OS TBD)" {
+ artifact "Java 21 Swing package\nMaven build (required)" as Desktop
+ database "Local persistence?\nOpen decision" as Local
+ Desktop --> Local : if local mode selected
+}
+node "Future product client environments" {
+ artifact "Web browser" as Web
+ artifact "Android app" as Android
+ artifact "iOS app" as iOS
+}
+cloud "Approved hosting boundary (provider TBD)" {
+ node "Application services" as API
+ database "Transactional records store" as DB
+ folder "Private receipt object storage" as Blob
+ node "Identity provider/service" as IdP
+ node "Notification workers/providers" as Notify
+}
+Web --> API : encrypted authenticated API
+Android --> API : encrypted authenticated API
+iOS --> API : encrypted authenticated API
+API --> DB
+API --> Blob : authorized private access
+API --> IdP
+API --> Notify : post-commit events
+note bottom of Desktop
+Required Java 21 / Maven / Swing target;
+no package or deployment currently exists.
+end note
+note bottom of API
+Future shared product topology is proposed;
+not an existing deployment.
+end note
+@enduml

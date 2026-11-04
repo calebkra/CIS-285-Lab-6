@@ -1,0 +1,31 @@
+@startuml
+title Proposed security trust boundaries — complete product
+actor User
+cloud "Untrusted public network" as Network
+package "User-controlled device boundary" {
+ [Web / Android / iOS Client] as Client
+}
+package "Controlled service boundary (provider TBD)" {
+ [Authenticated API] as API
+ [Authorization and domain services] as Domain
+ [Identity boundary] as IdP
+ [Audit / outbox] as Audit
+}
+database "Private transactional data" as DB
+folder "Private receipt objects" as Blob
+cloud "Notification provider" as Notify
+User --> Client
+Client --> Network
+Network --> API : TLS; bearer/session credential
+API --> IdP : verify identity
+API --> Domain
+Domain --> DB : least-privilege access
+Domain --> Blob : scoped receipt access
+Domain --> Audit
+Audit --> Notify : post-commit dispatch
+note right of Domain
+Authorize every group-scoped read/write
+using current server-side membership.
+Client checks alone are insufficient.
+end note
+@enduml

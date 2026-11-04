@@ -1,0 +1,22 @@
+@startuml
+title Expense lifecycle — proposed states and valid transitions
+[*] --> Draft
+Draft --> Pending : submit / validation succeeds
+Draft --> Draft : validation failure / correct input
+Pending --> Pending : authorized approval / more required
+Pending --> Approved : authorized approval / policy satisfied
+Pending --> Rejected : authorized rejection
+Pending --> Withdrawn : submitter withdraws [if policy allows]
+Approved --> Superseded : correction via new revision [policy decision]
+Rejected --> Draft : resubmit [policy decision]
+Approved --> [*]
+Rejected --> [*]
+Withdrawn --> [*]
+Superseded --> [*]
+note right of Pending
+No balance effect.
+end note
+note right of Approved
+Included in canonical balance calculation.
+end note
+@enduml

@@ -1,0 +1,72 @@
+@startuml
+title Deployment 1 of 2: Java Swing MVP (proposed; collaboration decision open)
+left to right direction
+
+node "User workstation" as Workstation {
+  artifact "Signed SplitSmart desktop package\nJava 21 + Swing" as Client
+  database "Optional local demo store" as LocalStore
+  folder "Optional protected local receipt files" as LocalReceipts
+  Client --> LocalStore
+  Client --> LocalReceipts
+}
+
+cloud "Approved network boundary\nonly if collaborative MVP selected" as Network
+node "Proposed shared service environment" as ServiceEnv {
+  artifact "Authenticated application service" as MvpService
+  database "Durable transactional store" as MvpDB
+  folder "Private receipt storage" as MvpFiles
+  artifact "In-app notification records" as MvpInbox
+  MvpService --> MvpDB
+  MvpService --> MvpFiles
+  MvpService --> MvpInbox
+}
+
+Client --> Network : encrypted authenticated connection
+Network --> MvpService
+note bottom of LocalStore
+  Local-only mode is a constrained demonstration;
+  it cannot provide remote shared records/notices.
+end note
+note bottom of MvpService
+  Server hosting, identity, persistence, receipt storage,
+  monitoring, backup and recovery are unselected proposals.
+end note
+@enduml
+
+@startuml
+title Deployment 2 of 2: Complete Web, Android and iOS Product (proposed)
+left to right direction
+
+cloud "Public client networks" as ClientNet
+node "User devices" as Devices {
+  artifact "Browser\nweb client" as Web
+  artifact "Signed Android app" as Android
+  artifact "Signed iOS app" as IOS
+}
+
+node "Approved service environment" as ServiceEnv {
+  artifact "Authenticated versioned API" as API
+  artifact "Shared domain/application service" as App
+  artifact "Identity integration" as Identity
+  database "Transactional primary data" as DB
+  folder "Private receipt object/file store" as ReceiptStore
+  artifact "In-app inbox and delivery adapters" as Notifications
+  artifact "Metrics, audit and operational logs" as Observability
+
+  API --> App
+  App --> Identity
+  App --> DB
+  App --> ReceiptStore
+  App --> Notifications
+  App --> Observability
+}
+
+Web --> ClientNet
+Android --> ClientNet
+IOS --> ClientNet
+ClientNet --> API : encrypted authenticated API
+note bottom of DB
+  Vendor, region, backup policy, RPO/RTO and operations are not selected.
+  Shared data authority is required for cross-platform consistency.
+end note
+@enduml

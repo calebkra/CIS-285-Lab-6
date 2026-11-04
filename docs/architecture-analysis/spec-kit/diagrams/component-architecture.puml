@@ -1,0 +1,51 @@
+@startuml
+title SplitSmart Component Architecture (Distinct MVP and complete product; proposed)
+left to right direction
+
+package "A. Java Swing MVP (proposed)" {
+  [Swing desktop presentation] as SwingUI
+  [GUI-independent application services] as MvpApp
+  [Domain rules\nexpense, approval, money, balance] as MvpDomain
+  [Persistence adapter] as MvpStore
+  [In-app notification inbox] as MvpNotify
+  [Receipt storage adapter] as MvpReceipt
+  [JUnit 5 tests] as MvpTests
+
+  SwingUI --> MvpApp
+  MvpApp --> MvpDomain
+  MvpApp --> MvpStore
+  MvpApp --> MvpNotify
+  MvpApp --> MvpReceipt
+  MvpTests ..> MvpDomain
+  MvpTests ..> MvpApp
+}
+
+package "B. Complete customer product (separate future delivery)" {
+  [Web client] as Web
+  [Android client] as Android
+  [iOS client] as IOS
+  [Authenticated versioned API] as API
+  [Shared domain and application services] as SharedDomain
+  [Identity integration] as Identity
+  [Transactional data store] as ProductStore
+  [Private receipt store] as ProductReceipt
+  [Notification adapters] as ProductNotify
+  [Authorized report queries] as ProductReports
+
+  Web --> API
+  Android --> API
+  IOS --> API
+  API --> SharedDomain
+  SharedDomain --> Identity
+  SharedDomain --> ProductStore
+  SharedDomain --> ProductReceipt
+  SharedDomain --> ProductNotify
+  SharedDomain --> ProductReports
+}
+
+note bottom
+  No components shown here are verified as implemented. The MVP's shared-service
+  boundary is needed only if multi-user collaboration is in MVP scope. Do not infer
+  shared source code or that Swing fulfills web, Android, or iOS requirements.
+end note
+@enduml

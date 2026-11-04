@@ -1,0 +1,24 @@
+@startuml
+title Proposed expense and receipt data flow — shared product
+actor Member
+participant "Web/mobile client" as Client
+participant "Application service" as App
+participant "Domain rules" as Domain
+database "Transactional store" as Store
+collections "Outbox" as Outbox
+participant "Receipt object store" as Receipt
+participant "Notification worker" as Notify
+Member -> Client: enter expense, choose members
+Client -> App: submit authenticated command
+App -> Domain: authorize and validate
+Domain --> App: accepted facts and exact shares
+App -> Receipt: store optional private image
+App -> Store: expense + shares + approval plan
+App -> Outbox: recipient events
+App -> Store: commit
+App --> Client: pending status
+Outbox -> Notify: dispatch after commit
+Notify -> Member: notice to other group members
+note over App,Store: Receipt reference and expense write need a failure policy
+note over App,Store: Partial object upload cleanup remains undecided
+@enduml

@@ -1,0 +1,33 @@
+@startuml
+title SplitSmart System Context (Complete product; Swing MVP is separate)
+left to right direction
+
+actor "Individual user" as User
+actor "Group organizer" as Organizer
+actor "Expense approver" as Approver
+rectangle "Web client" as Web
+rectangle "Android client" as Android
+rectangle "iOS client" as IOS
+rectangle "Java Swing MVP client\n(separate implementation slice)" as Swing
+rectangle "Shared authenticated\nSplitSmart services\n(proposed complete product)" as Services
+database "Shared authorized records\n(proposed)" as Data
+rectangle "Email / push provider\n(optional, unselected)" as Channels
+
+User --> Web
+User --> Android
+User --> IOS
+User --> Swing
+Organizer --> Web
+Approver --> Web
+Web --> Services
+Android --> Services
+IOS --> Services
+Swing --> Services : only if collaborative MVP approved
+Services --> Data
+Services --> Channels : only if channels approved
+
+note bottom of Swing
+  Swing alone does not meet the customer requirement for
+  primarily web-based, Android and iOS access.
+end note
+@enduml

@@ -1,0 +1,55 @@
+@startuml
+title SplitSmart proposed domain classes and service boundaries
+skinparam packageStyle rectangle
+package "Domain (proposed)" {
+ class Account
+ class Group
+ class Membership
+ class Expense
+ class ExpenseShare
+ class ApprovalDecision
+ class Payment
+ class Money
+ class Notification
+ class ReportQuery
+}
+package "Application services (proposed)" {
+ class ExpenseSubmissionService
+ class SplitCalculator
+ class ApprovalService
+ class BalanceCalculator
+ class PaymentService
+ class ReportService
+}
+package "Ports (proposed)" {
+ interface ExpenseRepository
+ interface GroupRepository
+ interface PaymentRepository
+ interface ReceiptStore
+ interface NotificationPublisher
+}
+Account "1" -- "0..*" Membership
+Group "1" -- "0..*" Membership
+Group "1" -- "0..*" Expense
+Expense "1" *-- "1..*" ExpenseShare
+Expense "1" *-- "0..*" ApprovalDecision
+Expense "1" --> "1" Account : submitter
+Expense "1" --> "1" Account : payer
+ExpenseShare "*" --> "1" Account : participant
+Payment "*" --> "1" Account : sender
+Payment "*" --> "1" Account : receiver
+ExpenseSubmissionService --> SplitCalculator
+ExpenseSubmissionService --> ExpenseRepository
+ExpenseSubmissionService --> GroupRepository
+ExpenseSubmissionService --> ReceiptStore
+ExpenseSubmissionService --> NotificationPublisher
+ApprovalService --> ExpenseRepository
+BalanceCalculator ..> Expense
+BalanceCalculator ..> Payment
+PaymentService --> PaymentRepository
+ReportService ..> ReportQuery
+note bottom of Expense
+Payer and participant relations are independent.
+All participants and payer must be current group members at submission.
+end note
+@enduml

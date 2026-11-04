@@ -1,0 +1,31 @@
+@startuml
+title Expense submission and approval — proposed shared workflow
+start
+:Member enters expense;
+:Validate required fields, positive amount, group membership, payer, participants, split;
+if (Valid?) then (yes)
+ :Calculate exact shares;
+ :Persist pending expense and approval plan atomically;
+ :Queue notices for other current group members;
+ while (Required approvals complete?) is (no)
+  :Authorized reviewer decides;
+  if (Reject?) then (yes)
+   :Record rejection;
+   :Keep out of balance calculation;
+   stop
+  else (no)
+   :Record approval;
+  endif
+ endwhile (yes)
+ :Activate approved expense;
+ :Include payer credit and participant debits in balance calculation;
+ stop
+else (no)
+ :Return validation error;
+ stop
+endif
+note right
+Pending and rejected expenses never change balances.
+Notification delivery is post-commit and may be asynchronous.
+end note
+@enduml

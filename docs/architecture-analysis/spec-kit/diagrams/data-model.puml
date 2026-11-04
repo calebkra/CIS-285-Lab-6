@@ -1,0 +1,134 @@
+@startuml
+title Proposed SplitSmart Data Model (Both scopes; not an existing schema)
+hide circle
+skinparam linetype ortho
+
+entity "UserAccount" as UserAccount {
+  * user_id : UUID
+  --
+  * normalized_email : unique
+  credential_reference
+  email_verified_at
+  account_status
+}
+entity "Group" as Group {
+  * group_id : UUID
+  --
+  * name
+  status
+  created_by_user_id
+}
+entity "GroupMembership" as Membership {
+  * group_id : UUID
+  * user_id : UUID
+  --
+  role
+  membership_status
+  joined_at
+  left_at
+}
+entity "ReviewPolicy" as Policy {
+  * policy_id : UUID
+  --
+  group_id
+  version
+  effective_at
+}
+entity "ReviewPolicyStep" as PolicyStep {
+  * policy_id : UUID
+  * step_number : INTEGER
+  --
+  reviewer_rule
+  required_count
+}
+entity "Expense" as Expense {
+  * expense_id : UUID
+  --
+  group_id
+  submitter_user_id
+  payer_user_id
+  amount
+  currency
+  split_method
+  status
+  review_policy_snapshot_id
+  receipt_id
+}
+entity "ExpenseShare" as Share {
+  * expense_id : UUID
+  * participant_user_id : UUID
+  --
+  selection_order
+  share_amount
+  percentage_input
+}
+entity "ExpenseApproval" as Approval {
+  * approval_id : UUID
+  --
+  expense_id
+  step_number
+  reviewer_user_id
+  decision
+  decision_at
+}
+entity "LedgerEntry" as Ledger {
+  * ledger_entry_id : UUID
+  --
+  group_id
+  user_id
+  source_type
+  source_id
+  signed_amount
+  currency
+}
+entity "Payment" as Payment {
+  * payment_id : UUID
+  --
+  group_id
+  from_user_id
+  to_user_id
+  amount
+  currency
+  idempotency_key
+}
+entity "ReceiptMetadata" as Receipt {
+  * receipt_id : UUID
+  --
+  expense_id
+  private_storage_key
+  content_type
+  size_bytes
+}
+entity "Notification" as Notification {
+  * notification_id : UUID
+  --
+  recipient_user_id
+  expense_id
+  delivery_status
+  created_at
+}
+
+UserAccount ||--o{ Membership : joins
+Group ||--o{ Membership : has
+Group ||--o{ Expense : contains
+UserAccount ||--o{ Expense : submits
+UserAccount ||--o{ Expense : pays
+Expense ||--|{ Share : allocates
+UserAccount ||--o{ Share : participates
+Group ||--o{ Policy : configures
+Policy ||--|{ PolicyStep : defines
+Expense }o--|| Policy : snapshots
+Expense ||--o{ Approval : reviewed by
+UserAccount ||--o{ Approval : decides
+Expense ||--o{ Ledger : posts after approval
+Payment ||--|{ Ledger : settles
+Expense ||--o| Receipt : references
+Expense ||--o{ Notification : triggers
+UserAccount ||--o{ Notification : receives
+
+note bottom
+  Proposed logical entities and keys only. A Balance is a rebuildable projection,
+  not the source of truth. Receipt bytes live in private file/object storage.
+  Constraints and unresolved currency/retention policies are documented in data-model.md.
+end note
+@enduml

@@ -1,0 +1,26 @@
+@startuml
+title Expense submission — proposed layered flow (desktop and service use case)
+actor Member
+boundary "Swing View / Web-Mobile Client" as UI
+control "ExpenseSubmissionService" as App
+control "SplitCalculator" as Split
+entity "Expense / Approval Policy" as Domain
+database "ExpenseRepository" as Repo
+collections "Notification outbox" as Outbox
+Member -> UI: enter expense and submit
+UI -> App: submit(command, authenticated context)
+App -> Repo: load current group/membership
+Repo --> App: authorized group snapshot
+App -> Domain: validate fields, payer, participants, split
+Domain --> App: valid / domain error
+App -> Split: allocate(amount, method, ordered participants)
+Split --> App: exact shares
+App -> Repo: begin transaction
+App -> Repo: save pending expense, shares, approval plan
+App -> Outbox: enqueue recipient notices
+App -> Repo: commit
+App --> UI: pending result
+UI --> Member: show pending state
+Outbox --> App: asynchronous delivery handled by adapter
+note over UI,App: UI collects/displays only; GUI-independent services own business rules.
+@enduml

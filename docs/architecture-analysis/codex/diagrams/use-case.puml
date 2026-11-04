@@ -1,0 +1,29 @@
+@startuml
+title SplitSmart use cases — complete product (proposed; desktop subset only)
+left to right direction
+actor User
+actor Organizer
+actor Approver
+rectangle "SplitSmart complete product\n(web, Android, iOS; shared services proposed)" {
+ usecase "Create account / sign in" as UC1
+ usecase "Manage groups and members" as UC2
+ usecase "Submit expense and receipt" as UC3
+ usecase "Review / approve / reject" as UC4
+ usecase "View expenses and balances" as UC5
+ usecase "Record payment" as UC6
+ usecase "Receive expense notice" as UC7
+ usecase "Generate report" as UC8
+}
+User --> UC1
+User --> UC3
+User --> UC5
+User --> UC6
+User --> UC7
+User --> UC8
+Organizer --> UC2
+Organizer --> UC4
+Approver --> UC4
+note bottom of UC3: Payer is separate from participants; may be excluded.
+note bottom of UC4: Pending/rejected expenses do not affect balances.
+note bottom of UC5: Swing MVP is desktop-only and does not satisfy platform scope.
+@enduml

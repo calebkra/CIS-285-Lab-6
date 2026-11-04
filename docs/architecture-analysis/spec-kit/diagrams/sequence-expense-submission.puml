@@ -1,0 +1,37 @@
+@startuml
+title Expense Submission Interaction (Both scopes; proposed boundaries)
+autonumber
+actor "Group member" as Member
+boundary "Swing UI or\nplatform client" as UI
+control "Expense application service" as Service
+control "Expense and split domain rules" as Domain
+database "Persistence adapter" as Store
+participant "Notification worker" as Worker
+
+Member -> UI: Enter expense and submit
+UI -> Service: Submit request + authenticated principal
+Service -> Store: Load group and current memberships
+Store --> Service: Group and membership data
+Service -> Domain: Validate request and calculate shares
+alt invalid or unauthorized
+  Domain --> Service: Explicit validation/authorization failure
+  Service --> UI: Error result; no expense committed
+  UI --> Member: Show understandable message
+else valid
+  Domain --> Service: Pending expense and exact shares
+  Service -> Store: Begin transaction
+  Service -> Store: Save expense, shares and approval snapshot
+  Service -> Store: Save outbox intent for other eligible members
+  Service -> Store: Commit transaction
+  Store --> Service: Committed pending expense
+  Service --> UI: Pending-review result
+  UI --> Member: Show pending status; balances unchanged
+  Worker -> Store: Read committed outbox item and resolve recipients
+  Store --> Worker: Recipient list excluding submitter
+  Worker -> Store: Persist/deliver authorized in-app notices
+end
+note over Service,Store
+  Final approval later atomically changes expense state and writes
+  ledger effects. Submission itself never changes balances.
+end note
+@enduml

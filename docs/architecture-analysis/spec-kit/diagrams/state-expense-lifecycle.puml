@@ -1,0 +1,23 @@
+@startuml
+title Expense Lifecycle (Both scopes; proposed state machine)
+
+[*] --> PENDING_REVIEW : valid submission committed
+PENDING_REVIEW --> PENDING_REVIEW : approval recorded; more approvals required
+PENDING_REVIEW --> REJECTED : authorized reviewer rejects
+PENDING_REVIEW --> APPROVED : all approvals complete;\nledger posting committed atomically
+APPROVED --> [*]
+REJECTED --> [*]
+
+note right of PENDING_REVIEW
+  Pending expenses are not in approved history
+  and have no balance/ledger effect.
+end note
+note right of APPROVED
+  Approved means the final decision and
+  ledger posting committed exactly once.
+end note
+note right of REJECTED
+  Rejected expenses do not affect balances.
+  Edit/resubmit behavior is an open decision.
+end note
+@enduml

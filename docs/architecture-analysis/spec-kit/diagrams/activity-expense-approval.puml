@@ -1,0 +1,34 @@
+@startuml
+title Expense Submission and Approval (Both scopes; proposed behavior)
+start
+:Member submits expense;
+:Authenticate and authorize group access;
+if (Requester authorized?) then (yes)
+  :Validate payer, participants, amount, details, split and receipt;
+  if (Expense valid?) then (yes)
+    :Calculate exact shares using largest remainder;
+    :Persist pending expense, shares, policy snapshot and notice intent;
+    :Commit submission;
+    :Notify eligible other group members;
+    repeat
+      :Authorized reviewer records decision;
+      if (Rejected?) then (yes)
+        :Persist rejection and decision history;
+        :Keep expense out of balances;
+        :Notify submitter of decision per approved policy;
+        stop
+      endif
+    repeat while (Required approvals remain?) is (yes)
+    -> no;
+    :Atomically mark approved and post ledger effects once;
+    :Refresh derived balance view;
+    stop
+  else (no)
+    :Return validation errors;
+    stop
+  endif
+else (no)
+  :Deny without exposing private group data;
+  stop
+endif
+@enduml

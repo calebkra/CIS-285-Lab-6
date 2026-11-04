@@ -1,0 +1,106 @@
+@startuml
+title SplitSmart Domain and Service Responsibilities (Both scopes; proposed)
+hide empty members
+skinparam classAttributeIconSize 0
+
+class UserAccount {
+  userId
+  normalizedEmail
+  verificationStatus
+}
+class Group {
+  groupId
+  name
+  reviewPolicyVersion
+}
+class GroupMembership {
+  role
+  status
+  joinedAt
+  leftAt
+}
+class Expense {
+  expenseId
+  amount
+  currency
+  splitMethod
+  status
+}
+class ExpenseShare {
+  participantSelectionOrder
+  shareAmount
+  percentageInput
+}
+class Approval {
+  stepNumber
+  reviewerId
+  decision
+}
+class LedgerEntry {
+  sourceType
+  signedAmount
+  currency
+}
+class BalanceProjection {
+  debtorId
+  creditorId
+  amountDue
+}
+class Payment {
+  fromUserId
+  toUserId
+  amount
+  idempotencyKey
+}
+class Notification {
+  recipientId
+  eventType
+  deliveryStatus
+}
+class Receipt {
+  storageReference
+  contentType
+}
+class ReportQuery {
+  dateRange
+  authorizedFilters
+}
+
+class ExpenseService <<service>>
+class ApprovalService <<service>>
+class LedgerAndPaymentService <<service>>
+class NotificationService <<service>>
+class ReportService <<service>>
+interface PersistencePort
+
+UserAccount "1" -- "0..*" GroupMembership
+Group "1" -- "0..*" GroupMembership
+Group "1" -- "0..*" Expense
+UserAccount "1" <-- "0..*" Expense : submitted by
+UserAccount "1" <-- "0..*" Expense : paid by
+Expense "1" *-- "1..*" ExpenseShare
+UserAccount "1" <-- "0..*" ExpenseShare : participant
+Expense "1" *-- "0..*" Approval
+UserAccount "1" <-- "0..*" Approval : reviewer
+Expense "1" --> "0..1" Receipt
+Expense "1" --> "0..*" LedgerEntry : after final approval
+Payment "1" --> "1..*" LedgerEntry : settlement effect
+Group "1" --> "0..*" Payment
+LedgerEntry ..> BalanceProjection : derives
+Group "1" --> "0..*" Notification
+Expense "1" --> "0..*" Notification
+UserAccount "1" <-- "0..*" Notification : recipient
+
+ExpenseService ..> PersistencePort
+ApprovalService ..> PersistencePort
+ApprovalService ..> LedgerAndPaymentService
+LedgerAndPaymentService ..> PersistencePort
+NotificationService ..> PersistencePort
+ReportService ..> PersistencePort
+
+note bottom
+  Conceptual responsibilities, not existing classes. BalanceProjection is rebuildable;
+  stored expense shares, approvals, payments and ledger effects are authoritative inputs.
+  Swing and future web/mobile presentation remain separate.
+end note
+@enduml

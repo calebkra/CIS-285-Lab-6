@@ -1,0 +1,38 @@
+@startuml
+title SplitSmart component architecture — verified vs proposed
+package "Java Swing MVP (required target; components proposed)" {
+ [Swing Presentation]
+ [Application Services]
+ [Domain Rules\nBigDecimal / split / approval / balance]
+ [Persistence Adapter\nnot implemented]
+ [Receipt and Notice Adapters\nnot implemented]
+ [JUnit 5 Tests\nrequired; not present]
+ [Swing Presentation] --> [Application Services]
+ [Application Services] --> [Domain Rules]
+ [Application Services] --> [Persistence Adapter]
+ [Application Services] --> [Receipt and Notice Adapters]
+ [JUnit 5 Tests] ..> [Application Services]
+ [JUnit 5 Tests] ..> [Domain Rules]
+}
+package "Complete customer product (proposed, separate scope)" {
+ [Web Client]
+ [Android Client]
+ [iOS Client]
+ [Shared API / Application Services]
+ [Identity Boundary]
+ [Transactional Store]
+ [Private Receipt Store]
+ [Notification Workers]
+ [Web Client] --> [Shared API / Application Services]
+ [Android Client] --> [Shared API / Application Services]
+ [iOS Client] --> [Shared API / Application Services]
+ [Shared API / Application Services] --> [Identity Boundary]
+ [Shared API / Application Services] --> [Transactional Store]
+ [Shared API / Application Services] --> [Private Receipt Store]
+ [Shared API / Application Services] --> [Notification Workers]
+}
+note bottom
+No components are implemented or verified in the repository.
+Swing alone does not satisfy web, Android, or iOS requirements.
+end note
+@enduml

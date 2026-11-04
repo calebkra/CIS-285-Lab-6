@@ -1,0 +1,29 @@
+@startuml
+title Proposed payment settlement and balance derivation
+rectangle "Approved expense" {
+ (Payer) as P
+ (Participant A) as A
+ (Participant B) as B
+}
+P --> A : expense payer credit
+P --> B : expense payer credit
+note right of P
+Credit payer full amount;
+debit participants their shares.
+If payer participates, own share offsets credit.
+end note
+rectangle "PaymentService transaction" {
+ (Read current obligation) as Read
+ (Validate positive and <= due) as Validate
+ (Persist payment) as Persist
+ (Recompute / update derived balance) as Calc
+}
+Read --> Validate
+Validate --> Persist : valid
+Persist --> Calc
+note bottom of Validate
+Reject excess and report remaining due.
+Serialize concurrent payments or use optimistic versioning.
+Pairwise preservation vs group netting is open policy.
+end note
+@enduml

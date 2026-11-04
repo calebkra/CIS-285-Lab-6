@@ -1,0 +1,79 @@
+@startuml
+title Proposed logical data model — no schema verified
+hide methods
+entity "Account" as Account {
+ * account_id : identifier <<PK>>
+ --
+ email : unique
+ verification_state
+}
+entity "Group" as Group {
+ * group_id : identifier <<PK>>
+ --
+ name
+ approval_policy_ref
+}
+entity "Membership" as Membership {
+ * membership_id : identifier <<PK>>
+ --
+ account_id : identifier <<FK>>
+ group_id : identifier <<FK>>
+ status, role
+}
+entity "Expense" as Expense {
+ * expense_id : identifier <<PK>>
+ --
+ group_id : identifier <<FK>>
+ submitter_id : account <<FK>>
+ payer_id : account <<FK>>
+ amount, currency, date, status
+ receipt_ref : nullable
+}
+entity "ExpenseShare" as Share {
+ * expense_id : identifier <<PK, FK>>
+ * participant_id : identifier <<PK, FK>>
+ --
+ selection_order
+ percentage : nullable
+ share_amount
+}
+entity "ApprovalDecision" as Decision {
+ * decision_id : identifier <<PK>>
+ --
+ expense_id : identifier <<FK>>
+ reviewer_id : account <<FK>>
+ step, decision, decided_at
+}
+entity "Payment" as Payment {
+ * payment_id : identifier <<PK>>
+ --
+ group_id : identifier <<FK>>
+ sender_id : account <<FK>>
+ receiver_id : account <<FK>>
+ amount, currency, created_at
+}
+entity "Notification" as Notice {
+ * notice_id : identifier <<PK>>
+ --
+ recipient_id : account <<FK>>
+ expense_id : identifier <<FK>>
+ delivery_state
+}
+Account ||--o{ Membership
+Group ||--o{ Membership
+Group ||--o{ Expense
+Expense ||--|{ Share
+Account ||--o{ Share : participant
+Account ||--o{ Expense : payer / submitter
+Expense ||--o{ Decision
+Account ||--o{ Decision : reviewer
+Account ||--o{ Payment : sender / receiver
+Group ||--o{ Payment
+Account ||--o{ Notice : recipient
+Expense ||--o{ Notice
+note bottom
+Proposed logical entities only. Enforce positive amount, unique email,
+current group membership at submit, 100% percentages, exact share sum,
+and no balance effect before approval. Balance is derived, not stored here.
+end note
+@enduml

@@ -1,0 +1,24 @@
+@startuml
+title SplitSmart system context — desktop MVP and complete product
+actor "Individual / group member" as Member
+actor Organizer
+actor Approver
+rectangle "SplitSmart Java Swing MVP\n(desktop implementation decision)" as MVP
+rectangle "SplitSmart complete product\n(web + Android + iOS; shared data required)" as Product
+cloud "Email / verification / recovery\nprovider TBD" as Identity
+cloud "Notification delivery\nchannels TBD" as Notice
+cloud "Private receipt storage\nprovider TBD" as Receipt
+Member --> MVP : desktop access
+Organizer --> MVP
+Approver --> MVP
+Member --> Product : web/mobile access
+Organizer --> Product
+Approver --> Product
+Product --> Identity : proposed integration
+Product --> Notice : proposed post-commit notices
+Product --> Receipt : proposed private image storage
+note bottom of MVP
+No running implementation is verified.
+Cannot satisfy required web/mobile coverage alone.
+end note
+@enduml

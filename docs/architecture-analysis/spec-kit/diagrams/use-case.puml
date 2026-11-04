@@ -1,0 +1,36 @@
+@startuml
+title SplitSmart Use Cases (Complete Product; Swing MVP subset)
+left to right direction
+
+actor "Individual user" as User
+actor "Group organizer" as Organizer
+actor "Expense approver" as Approver
+actor "Notification provider\n(optional future)" as Notifier
+
+rectangle "SplitSmart" {
+  usecase "Manage account\nand sign in" as UCAccount
+  usecase "Manage groups\nand membership" as UCGroups
+  usecase "Submit expense\nand receipt" as UCSubmit
+  usecase "Review expense" as UCReview
+  usecase "View balances\nand record payment" as UCBalance
+  usecase "View summaries\nand reports" as UCReport
+  usecase "Receive expense\nnotice" as UCNotice
+  usecase "Deliver optional email\nor push notice" as UCExternalNotice
+}
+
+User -- UCAccount
+User -- UCGroups
+User -- UCSubmit
+User -- UCBalance
+User -- UCReport
+User -- UCNotice
+Organizer -- UCGroups
+Approver -- UCReview
+Notifier -- UCExternalNotice
+
+note bottom of User
+  Proposed future product: web, Android, and iOS clients.
+  Java Swing MVP is a separate implementation slice and does not
+  satisfy the required web or mobile platforms.
+end note
+@enduml
