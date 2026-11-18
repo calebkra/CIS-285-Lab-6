@@ -12,3 +12,80 @@ model EnvironmentCheck {
   message   String
   createdAt DateTime @default(now())
 }
+
+model User {
+  id               Int            @id @default(autoincrement())
+  name             String
+  email            String         @unique
+  avatar           String?
+  memberships      GroupMember[]
+  paidExpenses     Expense[]      @relation("Payer")
+  shares           ExpenseShare[]
+  sentPayments     Payment[]      @relation("PaymentSender")
+  receivedPayments Payment[]      @relation("PaymentRecipient")
+}
+
+model Group {
+  id        Int           @id @default(autoincrement())
+  name      String
+  emoji     String        @default("✦")
+  color     String        @default("violet")
+  createdAt DateTime      @default(now())
+  members   GroupMember[]
+  expenses  Expense[]
+  payments  Payment[]
+}
+
+model GroupMember {
+  id      Int    @id @default(autoincrement())
+  groupId Int
+  userId  Int
+  role    String @default("member")
+  group   Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+}
+
+model Expense {
+  id          Int            @id @default(autoincrement())
+  groupId     Int
+  description String
+  amountCents Int
+  date        DateTime
+  payerId     Int
+  splitMethod String
+  status      String         @default("PENDING")
+  reviewedById Int?
+  reviewedAt   DateTime?
+  createdAt   DateTime       @default(now())
+  group       Group          @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  payer       User           @relation("Payer", fields: [payerId], references: [id])
+  shares      ExpenseShare[]
+}
+
+model ExpenseShare {
+  id          Int      @id @default(autoincrement())
+  expenseId   Int
+  userId      Int
+  amountCents Int
+  percentage  Int?
+  expense     Expense  @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id])
+
+  @@unique([expenseId, userId])
+}
+
+model Payment {
+  id          Int      @id @default(autoincrement())
+  groupId     Int
+  fromUserId  Int
+  toUserId    Int
+  amountCents Int
+  date        DateTime
+  note        String?
+  createdAt   DateTime @default(now())
+  group       Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  fromUser    User     @relation("PaymentSender", fields: [fromUserId], references: [id])
+  toUser      User     @relation("PaymentRecipient", fields: [toUserId], references: [id])
+}

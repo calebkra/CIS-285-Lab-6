@@ -1,0 +1,2 @@
+ALTER TABLE "Expense" ADD COLUMN "reviewedById" INTEGER;
+ALTER TABLE "Expense" ADD COLUMN "reviewedAt" DATETIME;

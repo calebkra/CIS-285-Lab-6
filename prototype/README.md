@@ -1,5 +1,33 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## SplitSmart prototype
+
+An interactive Next.js demo of core expense-sharing flows. It uses Prisma 6 with the local SQLite database in `prisma/dev.db`; financial values are stored as integer cents. Database access remains in the server-side `/api/demo` route.
+
+This is intentionally demo-only: Mia Chen is a fixed demo identity, review notifications are represented in the UI, and recording a payment does not contact a payment provider.
+
+### Setup
+
+```bash
+cp .env.example .env
+npx prisma migrate deploy
+npm run db:seed
+npm run dev
+```
+
+The seed is idempotent: it upserts demo people and groups, and only creates its starter financial records when no expenses exist. It does not reset or delete `prisma/dev.db`.
+
+Useful checks:
+
+```bash
+npm run lint
+npm run build
+```
+
+### Demo journey
+
+Use **Overview** for group snapshots, recent activity, and pending approvals. Open **My groups** to review members, net balances, expenses, and record a settlement. **Add expense** supports equal or percentage participant splits; submitted expenses remain pending until approved. This prototype uses one approval step: the group organizer can approve or reject, and each decision records the organizer and timestamp. **Reports** filters approved expenses and payments by an inclusive date range.
+
 ## Getting Started
 
 First, run the development server:

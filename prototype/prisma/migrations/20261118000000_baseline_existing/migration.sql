@@ -1,0 +1,7 @@
+-- Baseline for the pre-existing starter database. This migration is marked applied
+-- without execution because EnvironmentCheck already exists in dev.db.
+CREATE TABLE "EnvironmentCheck" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "message" TEXT NOT NULL,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
