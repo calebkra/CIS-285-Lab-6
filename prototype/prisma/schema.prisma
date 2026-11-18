@@ -7,8 +7,148 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Original environment smoke-test table; kept so existing data is preserved.
 model EnvironmentCheck {
   id        Int      @id @default(autoincrement())
   message   String
   createdAt DateTime @default(now())
+}
+
+// PROTOTYPE: no passwords. "Sign in" is a demo user switcher.
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  createdAt DateTime @default(now())
+
+  memberships   Membership[]
+  paidExpenses  Expense[]      @relation("ExpensePayer")
+  submitted     Expense[]      @relation("ExpenseSubmitter")
+  decided       Expense[]      @relation("ExpenseDecider")
+  shares        ExpenseShare[]
+  paymentsMade  Payment[]      @relation("PaymentFrom")
+  paymentsGot   Payment[]      @relation("PaymentTo")
+  notifications Notification[]
+  approvals     Approval[]
+}
+
+model Group {
+  id                String   @id @default(cuid())
+  name              String
+  description       String   @default("")
+  // How many distinct approvers must approve an expense before it counts.
+  requiredApprovals Int      @default(1)
+  createdAt         DateTime @default(now())
+
+  members       Membership[]
+  expenses      Expense[]
+  payments      Payment[]
+  notifications Notification[]
+}
+
+model Membership {
+  id          String   @id @default(cuid())
+  groupId     String
+  userId      String
+  isOrganizer Boolean  @default(false)
+  // Members with canApprove may approve/reject other members' expenses.
+  canApprove  Boolean  @default(false)
+  joinedAt    DateTime @default(now())
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([userId])
+}
+
+// All money is stored as integer cents.
+model Expense {
+  id           String    @id @default(cuid())
+  groupId      String
+  description  String
+  amountCents  Int
+  date         DateTime
+  payerId      String
+  submitterId  String
+  splitMethod  String    @default("EQUAL") // EQUAL | PERCENT
+  status       String    @default("PENDING") // PENDING | APPROVED | REJECTED
+  decisionNote String?
+  decidedById  String?
+  decidedAt    DateTime?
+  createdAt    DateTime  @default(now())
+
+  group         Group          @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  payer         User           @relation("ExpensePayer", fields: [payerId], references: [id])
+  submitter     User           @relation("ExpenseSubmitter", fields: [submitterId], references: [id])
+  decidedBy     User?          @relation("ExpenseDecider", fields: [decidedById], references: [id])
+  shares        ExpenseShare[]
+  notifications Notification[]
+  approvals     Approval[]
+
+  @@index([groupId, status])
+  @@index([date])
+}
+
+model ExpenseShare {
+  id         String @id @default(cuid())
+  expenseId  String
+  userId     String
+  shareCents Int
+  // Percentage in hundredths of a percent (3333 = 33.33%); null for equal splits.
+  percentBp  Int?
+  position   Int    @default(0)
+
+  expense Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@unique([expenseId, userId])
+}
+
+model Payment {
+  id          String   @id @default(cuid())
+  groupId     String
+  fromUserId  String
+  toUserId    String
+  amountCents Int
+  date        DateTime
+  note        String   @default("")
+  createdAt   DateTime @default(now())
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  from  User  @relation("PaymentFrom", fields: [fromUserId], references: [id])
+  to    User  @relation("PaymentTo", fields: [toUserId], references: [id])
+
+  @@index([groupId, date])
+}
+
+// PROTOTYPE: in-app notices only; nothing is sent externally.
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  groupId   String
+  expenseId String?
+  message   String
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group   Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  expense Expense? @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+}
+
+// One row per reviewer approval. A rejection is final and is stored on Expense.
+model Approval {
+  id         String   @id @default(cuid())
+  expenseId  String
+  reviewerId String
+  note       String?
+  createdAt  DateTime @default(now())
+
+  expense  Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  reviewer User    @relation(fields: [reviewerId], references: [id])
+
+  @@unique([expenseId, reviewerId])
 }
