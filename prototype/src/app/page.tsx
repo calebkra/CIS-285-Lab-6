@@ -1,103 +1,201 @@
-import Image from "next/image";
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { formatCents } from "@/lib/money";
+
+type Group = { id: number; name: string };
+type Member = { id: number; name: string };
+type Expense = {
+  id: number;
+  description: string;
+  amountCents: number;
+  payer: string;
+  participants: { memberId: number; name: string; shareCents: number }[];
+};
+type Balance = { memberId: number; name: string; balanceCents: number };
+
+async function api<T>(url: string, body?: unknown): Promise<T> {
+  const res = await fetch(url, body === undefined ? undefined : {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error ?? "Request failed.");
+  return data as T;
+}
+
+const input = "border rounded px-2 py-1 w-full bg-transparent border-gray-400";
+const btn = "bg-blue-600 text-white rounded px-3 py-1 hover:bg-blue-700 disabled:opacity-50";
+const card = "border border-gray-300 rounded-lg p-4 mb-4";
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [groupId, setGroupId] = useState<number | null>(null);
+  const [members, setMembers] = useState<Member[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [balances, setBalances] = useState<Balance[]>([]);
+  const [error, setError] = useState("");
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+  const [groupName, setGroupName] = useState("");
+  const [memberName, setMemberName] = useState("");
+  const [desc, setDesc] = useState("");
+  const [amount, setAmount] = useState("");
+  const [payerId, setPayerId] = useState("");
+  const [selected, setSelected] = useState<number[]>([]);
+
+  const run = async (fn: () => Promise<void>) => {
+    setError("");
+    try { await fn(); } catch (e) { setError((e as Error).message); }
+  };
+
+  const loadGroup = useCallback(async (id: number) => {
+    const [m, e, b] = await Promise.all([
+      api<Member[]>(`/api/groups/${id}/members`),
+      api<Expense[]>(`/api/groups/${id}/expenses`),
+      api<Balance[]>(`/api/groups/${id}/balances`),
+    ]);
+    setMembers(m); setExpenses(e); setBalances(b);
+  }, []);
+
+  useEffect(() => {
+    run(async () => {
+      const gs = await api<Group[]>("/api/groups");
+      setGroups(gs);
+      const saved = Number(localStorage.getItem("splitsmart.group"));
+      const pick = gs.find((g) => g.id === saved) ?? gs[0];
+      if (pick) setGroupId(pick.id);
+    });
+  }, []);
+
+  useEffect(() => {
+    setPayerId(""); setSelected([]);
+    if (groupId === null) { setMembers([]); setExpenses([]); setBalances([]); return; }
+    localStorage.setItem("splitsmart.group", String(groupId));
+    run(() => loadGroup(groupId));
+  }, [groupId, loadGroup]);
+
+  const createGroup = (ev: React.FormEvent) => {
+    ev.preventDefault();
+    run(async () => {
+      const g = await api<Group>("/api/groups", { name: groupName });
+      setGroups((gs) => [...gs, g]); setGroupId(g.id); setGroupName("");
+    });
+  };
+
+  const addMember = (ev: React.FormEvent) => {
+    ev.preventDefault();
+    if (groupId === null) return;
+    run(async () => {
+      await api(`/api/groups/${groupId}/members`, { name: memberName });
+      setMemberName(""); await loadGroup(groupId);
+    });
+  };
+
+  const addExpense = (ev: React.FormEvent) => {
+    ev.preventDefault();
+    if (groupId === null) return;
+    run(async () => {
+      await api(`/api/groups/${groupId}/expenses`, {
+        description: desc, amount, payerId: payerId ? Number(payerId) : null, participantIds: selected,
+      });
+      setDesc(""); setAmount(""); await loadGroup(groupId);
+    });
+  };
+
+  const toggle = (id: number) =>
+    setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+
+  return (
+    <main className="max-w-3xl mx-auto p-6">
+      <h1 className="text-3xl font-bold mb-4">SplitSmart</h1>
+      {error && (
+        <div role="alert" className="mb-4 rounded border border-red-500 bg-red-100 text-red-800 p-3">{error}</div>
+      )}
+
+      <section className={card}>
+        <h2 className="font-semibold text-lg mb-2">Groups</h2>
+        <form onSubmit={createGroup} className="flex gap-2 mb-3">
+          <input aria-label="New group name" className={input} placeholder="New group name" value={groupName} onChange={(e) => setGroupName(e.target.value)} />
+          <button className={btn}>Create</button>
+        </form>
+        {groups.length === 0 ? <p className="text-gray-500">No groups yet.</p> : (
+          <select aria-label="Select group" className={input} value={groupId ?? ""} onChange={(e) => setGroupId(Number(e.target.value))}>
+            {groups.map((g) => <option key={g.id} value={g.id} className="text-black">{g.name}</option>)}
+          </select>
+        )}
+      </section>
+
+      {groupId !== null && (<>
+        <section className={card}>
+          <h2 className="font-semibold text-lg mb-2">Members</h2>
+          <form onSubmit={addMember} className="flex gap-2 mb-3">
+            <input aria-label="New member name" className={input} placeholder="Member name" value={memberName} onChange={(e) => setMemberName(e.target.value)} />
+            <button className={btn}>Add</button>
+          </form>
+          {members.length === 0 ? <p className="text-gray-500">No members yet.</p> : (
+            <ul className="list-disc ml-5">{members.map((m) => <li key={m.id}>{m.name}</li>)}</ul>
+          )}
+        </section>
+
+        <section className={card}>
+          <h2 className="font-semibold text-lg mb-2">Record expense</h2>
+          <form onSubmit={addExpense} className="grid gap-2">
+            <input aria-label="Description" className={input} placeholder="Description" value={desc} onChange={(e) => setDesc(e.target.value)} />
+            <input aria-label="Amount" className={input} placeholder="Amount (e.g. 60.00)" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} />
+            <select aria-label="Payer" className={input} value={payerId} onChange={(e) => setPayerId(e.target.value)}>
+              <option value="" className="text-black">Who paid?</option>
+              {members.map((m) => <option key={m.id} value={m.id} className="text-black">{m.name}</option>)}
+            </select>
+            <fieldset>
+              <legend className="text-sm mb-1">Split between:</legend>
+              <div className="flex flex-wrap gap-3">
+                {members.map((m) => (
+                  <label key={m.id} className="flex items-center gap-1">
+                    <input type="checkbox" checked={selected.includes(m.id)} onChange={() => toggle(m.id)} /> {m.name}
+                  </label>
+                ))}
+              </div>
+              {members.length > 0 && (
+                <button type="button" className="text-sm underline mt-1" onClick={() => setSelected(members.map((m) => m.id))}>Select all</button>
+              )}
+            </fieldset>
+            <div><button className={btn}>Add expense</button></div>
+          </form>
+        </section>
+
+        <section className={card}>
+          <h2 className="font-semibold text-lg mb-2">Balances</h2>
+          {balances.length === 0 ? <p className="text-gray-500">No members yet.</p> : (
+            <ul>
+              {balances.map((b) => (
+                <li key={b.memberId} className="flex justify-between border-b border-gray-200 py-1">
+                  <span>{b.name}</span>
+                  <span className={b.balanceCents > 0 ? "text-green-600 font-mono" : b.balanceCents < 0 ? "text-red-600 font-mono" : "font-mono"}>
+                    {b.balanceCents > 0 ? "+" : ""}{formatCents(b.balanceCents)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <section className={card}>
+          <h2 className="font-semibold text-lg mb-2">Expense history</h2>
+          {expenses.length === 0 ? <p className="text-gray-500">No expenses yet.</p> : (
+            <ul className="grid gap-2">
+              {expenses.map((e) => (
+                <li key={e.id} className="border-b border-gray-200 pb-2">
+                  <div className="flex justify-between"><strong>{e.description}</strong><span className="font-mono">{formatCents(e.amountCents)}</span></div>
+                  <div className="text-sm text-gray-500">
+                    Paid by {e.payer} · Split: {e.participants.map((p) => `${p.name} ${formatCents(p.shareCents)}`).join(", ")}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </>)}
+    </main>
   );
 }

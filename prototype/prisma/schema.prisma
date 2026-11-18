@@ -12,3 +12,41 @@ model EnvironmentCheck {
   message   String
   createdAt DateTime @default(now())
 }
+
+model Group {
+  id        Int       @id @default(autoincrement())
+  name      String
+  createdAt DateTime  @default(now())
+  members   Member[]
+  expenses  Expense[]
+}
+
+model Member {
+  id           Int                  @id @default(autoincrement())
+  name         String
+  groupId      Int
+  group        Group                @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  paid         Expense[]
+  participants ExpenseParticipant[]
+}
+
+model Expense {
+  id           Int                  @id @default(autoincrement())
+  description  String
+  amountCents  Int
+  groupId      Int
+  payerId      Int
+  createdAt    DateTime             @default(now())
+  group        Group                @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  payer        Member               @relation(fields: [payerId], references: [id])
+  participants ExpenseParticipant[]
+}
+
+model ExpenseParticipant {
+  expenseId Int
+  memberId  Int
+  expense   Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  member    Member  @relation(fields: [memberId], references: [id])
+
+  @@id([expenseId, memberId])
+}
