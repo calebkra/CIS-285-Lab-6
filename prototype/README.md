@@ -40,6 +40,26 @@ After changing `prisma/schema.prisma` use `npx prisma migrate dev --name <change
 5. **Record payment** (`/groups/<id>/pay`) – partial or full; amounts above what is owed are rejected.
 6. **Reports** (`/reports`) – expenses and payments with inclusive date range and group filter.
 
+## Approval policy (prototype limits)
+
+- **Who can approve:** only members whose membership has `canApprove` set. The demo seed
+  (`prisma/seed.ts`) makes **Alex and Jordan** approvers in both groups; **Sam and Riley are
+  regular members** who can submit expenses but not review them. This is demo data, not a
+  rule in the code. Being the payer or a participant never affects approval rights.
+- **Organizer controls it:** on the group page (Members list) the organizer can **Make approver** or
+  **Remove approver role** for any member, including themselves. Rules: a group must always keep at
+  least one approver; removing an approver withdraws their approvals on still-pending expenses (decided
+  expenses are untouched); if the required count would exceed the remaining approvers it is lowered to
+  match, and pending expenses that now meet it are approved. The affected member gets an in-app
+  notification. Non-organizers see no controls and the server rejects the action.
+- **How many approvals:** each group sets "Approvals required" (organizer-only, group page).
+  The full count is always required. A submitter can't review their own expense, so if too few
+  *other* approvers exist (e.g. Lisbon Trip needs 2 but Alex/Jordan are the only approvers, so
+  an expense submitted by either can get at most 1), the expense stays pending. The app warns
+  about this on submission and on the expense page; an organizer must lower the requirement or make another member an approver.
+- **Payer vs. participants:** the payer is recorded separately and may or may not be a
+  participant; balances account for both cases.
+
 ## Design notes
 
 - Money is stored as **integer cents**; percentages as integer basis points. Leftover

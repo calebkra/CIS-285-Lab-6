@@ -86,6 +86,8 @@ const EXPENSES: Seed[] = [
   { id: "e-hotel", group: "g-lisbon", description: "Hotel (3 nights)", cents: 48000, ago: 20, payer: "u-jordan", submitter: "u-jordan", status: "APPROVED", people: eq("u-alex", "u-jordan", "u-sam"), decidedBy: "u-alex" },
   { id: "e-train", group: "g-lisbon", description: "Train tickets", cents: 9650, ago: 18, payer: "u-alex", submitter: "u-alex", status: "APPROVED", people: eq("u-alex", "u-jordan", "u-sam"), decidedBy: "u-jordan" },
   { id: "e-dinner", group: "g-lisbon", description: "Group dinner", cents: 11800, ago: 3, payer: "u-sam", submitter: "u-sam", status: "PENDING", people: [{ user: "u-alex", pct: 4000 }, { user: "u-jordan", pct: 3000 }, { user: "u-sam", pct: 3000 }] },
+  // Payer (Sam) is NOT a participant: Alex and Jordan owe Sam their shares once approved.
+  { id: "e-taxi", group: "g-lisbon", description: "Airport taxi (Sam paid, not sharing)", cents: 6000, ago: 1, payer: "u-sam", submitter: "u-sam", status: "PENDING", people: eq("u-alex", "u-jordan") },
 ];
 
 const PAYMENTS = [
@@ -189,10 +191,11 @@ async function main() {
   const approvalSeeds = [
     ...EXPENSES.filter((e) => e.status === "APPROVED" && e.decidedBy).map((e) => ({ expenseId: e.id, reviewerId: e.decidedBy!, ago: Math.max(e.ago - 1, 0) })),
     { expenseId: "e-dinner", reviewerId: "u-alex", ago: 2 },
+    { expenseId: "e-taxi", reviewerId: "u-jordan", ago: 1 },
   ];
   for (const a of approvalSeeds) {
     const exp = await prisma.expense.findUnique({ where: { id: a.expenseId } });
-    if (!exp || (a.expenseId === "e-dinner" && exp.status !== "PENDING")) continue;
+    if (!exp || (["e-dinner", "e-taxi"].includes(a.expenseId) && exp.status !== "PENDING")) continue;
     const key = { expenseId_reviewerId: { expenseId: a.expenseId, reviewerId: a.reviewerId } };
     if (!(await prisma.approval.findUnique({ where: key }))) {
       await prisma.approval.create({ data: { expenseId: a.expenseId, reviewerId: a.reviewerId, createdAt: daysAgo(a.ago) } });

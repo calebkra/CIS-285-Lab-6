@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { getCurrentUser, SESSION_COOKIE } from "@/lib/session";
-import { getGroupDebts, getMembership, parseDateInput, requiredApprovalsFor } from "@/lib/data";
+import { getGroupDebts, getMembership, parseDateInput, eligibleReviewerCount, requiredApprovalsFor } from "@/lib/data";
 import { outstanding } from "@/lib/balances";
 import {
   formatCents,
@@ -116,6 +116,10 @@ export async function createExpense(_prev: FormState, fd: FormData): Promise<For
   });
 
   revalidatePath("/", "layout");
+  const [need, eligible] = await Promise.all([requiredApprovalsFor(groupId), eligibleReviewerCount(groupId, user.id)]);
+  if (eligible < need) {
+    go(`/groups/${groupId}`, "error", `Expense submitted, but it needs ${need} approvals and only ${eligible} approver${eligible === 1 ? " is" : "s are"} eligible (you can’t review your own). An organizer must lower the requirement or add an approver.`);
+  }
   go(`/groups/${groupId}`, "notice", "Expense submitted. It is pending approval and does not affect balances yet.");
 }
 
@@ -189,6 +193,87 @@ export async function reviewExpense(fd: FormData) {
   );
 }
 
+/** Approve pending expenses that already meet the group's required approvals (after a policy change). */
+async function settlePending(groupId: string, decidedById: string): Promise<number> {
+  const need = await requiredApprovalsFor(groupId);
+  const pending = await db.expense.findMany({
+    where: { groupId, status: "PENDING" },
+    include: { _count: { select: { approvals: true } } },
+  });
+  let settled = 0;
+  for (const e of pending) {
+    if (e._count.approvals >= need) {
+      const r = await db.expense.updateMany({
+        where: { id: e.id, status: "PENDING" },
+        data: { status: "APPROVED", decidedById, decidedAt: new Date() },
+      });
+      settled += r.count;
+    }
+  }
+  return settled;
+}
+
+/** Organizer-only: grant or revoke a member's approver status. */
+export async function setApprover(fd: FormData) {
+  const user = await getCurrentUser();
+  const groupId = str(fd, "groupId");
+  const targetId = str(fd, "userId");
+  const grant = str(fd, "canApprove") === "true";
+  const back = `/groups/${groupId}`;
+  if (!user) go(back, "error", "No demo user found.");
+  const me = await getMembership(groupId, user.id);
+  if (!me?.isOrganizer) go(back, "error", "Only the group organizer can change who can approve.");
+  const target = await db.membership.findUnique({
+    where: { groupId_userId: { groupId, userId: targetId } },
+    include: { user: true },
+  });
+  if (!target) go(back, "error", "That person is not a member of this group.");
+  if (target.canApprove === grant) go(back, "notice", `${target.user.name} is already ${grant ? "an approver" : "not an approver"}.`);
+
+  const result = await db.$transaction(async (tx) => {
+    const approvers = await tx.membership.count({ where: { groupId, canApprove: true } });
+    if (!grant && approvers <= 1) return { error: "A group must keep at least one approver." };
+
+    await tx.membership.update({ where: { id: target.id }, data: { canApprove: grant } });
+    let withdrawn = 0;
+    let lowered: number | null = null;
+    if (!grant) {
+      // Authority is revoked: their approvals on still-pending expenses no longer count.
+      withdrawn = (
+        await tx.approval.deleteMany({
+          where: { reviewerId: targetId, expense: { groupId, status: "PENDING" } },
+        })
+      ).count;
+      // The requirement can never exceed the number of approvers.
+      const group = await tx.group.findUnique({ where: { id: groupId } });
+      if (group && group.requiredApprovals > approvers - 1) {
+        lowered = approvers - 1;
+        await tx.group.update({ where: { id: groupId }, data: { requiredApprovals: lowered } });
+      }
+    }
+    await tx.notification.create({
+      data: {
+        userId: targetId,
+        groupId,
+        message: grant
+          ? `${user.name} made you an approver in this group.`
+          : `${user.name} removed your approver role in this group.`,
+      },
+    });
+    return { withdrawn, lowered };
+  });
+  if ("error" in result) go(back, "error", result.error!);
+
+  const settled = result.lowered !== null ? await settlePending(groupId, user.id) : 0;
+  revalidatePath("/", "layout");
+  const notes = [
+    result.withdrawn ? `${result.withdrawn} pending approval(s) by ${target.user.name} were withdrawn.` : "",
+    result.lowered !== null ? `Approvals required lowered to ${result.lowered}.` : "",
+    settled ? `${settled} pending expense(s) now meet the requirement and were approved.` : "",
+  ].filter(Boolean);
+  go(back, "notice", `${target.user.name} is ${grant ? "now" : "no longer"} an approver.${notes.length ? " " + notes.join(" ") : ""}`);
+}
+
 /** Organizer-only: set how many approvals an expense needs. */
 export async function updateApprovalPolicy(fd: FormData) {
   const user = await getCurrentUser();
@@ -206,22 +291,7 @@ export async function updateApprovalPolicy(fd: FormData) {
 
   await db.group.update({ where: { id: groupId }, data: { requiredApprovals: n } });
 
-  // Pending expenses that already meet the new threshold are approved now.
-  const pending = await db.expense.findMany({
-    where: { groupId, status: "PENDING" },
-    include: { _count: { select: { approvals: true } } },
-  });
-  let settled = 0;
-  for (const e of pending) {
-    const need = await requiredApprovalsFor(groupId, e.submitterId);
-    if (e._count.approvals >= need) {
-      const r = await db.expense.updateMany({
-        where: { id: e.id, status: "PENDING" },
-        data: { status: "APPROVED", decidedById: user.id, decidedAt: new Date() },
-      });
-      settled += r.count;
-    }
-  }
+  const settled = await settlePending(groupId, user.id);
 
   revalidatePath("/", "layout");
   go(back, "notice", `Approvals required set to ${n}.${settled ? ` ${settled} pending expense(s) now meet it and were approved.` : ""}`);

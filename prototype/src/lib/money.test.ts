@@ -35,4 +35,14 @@ describe("balances", () => {
     expect(debts).toEqual([{ fromId: "b", toId: "a", cents: 200 }]);
     expect(outstanding(debts, "b", "a")).toBe(200);
   });
+
+  it("handles a payer who is not a participant", () => {
+    const debts = computeDebts(
+      [{ payerId: "a", shares: [{ userId: "b", shareCents: 600 }, { userId: "c", shareCents: 400 }] }],
+      [],
+    );
+    expect(outstanding(debts, "b", "a")).toBe(600);
+    expect(outstanding(debts, "c", "a")).toBe(400);
+    expect(debts.some((d) => d.fromId === "a")).toBe(false);
+  });
 });

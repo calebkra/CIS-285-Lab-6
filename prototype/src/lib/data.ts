@@ -168,15 +168,21 @@ export async function getReport(userId: string, f: ReportFilters) {
   };
 }
 
-/** Approvals needed for this expense: the group setting, capped by approvers who can actually review it. */
+/** Approvals needed for this expense: always the group's full setting (never silently lowered). */
 export async function requiredApprovalsFor(
+  groupId: string,
+  _submitterId?: string,
+  client: Prisma.TransactionClient | typeof db = db,
+): Promise<number> {
+  const group = await client.group.findUnique({ where: { id: groupId } });
+  return Math.max(1, group?.requiredApprovals ?? 1);
+}
+
+/** Approvers who may review an expense (everyone with approve rights except its submitter). */
+export async function eligibleReviewerCount(
   groupId: string,
   submitterId: string,
   client: Prisma.TransactionClient | typeof db = db,
 ): Promise<number> {
-  const group = await client.group.findUnique({ where: { id: groupId } });
-  const eligible = await client.membership.count({
-    where: { groupId, canApprove: true, userId: { not: submitterId } },
-  });
-  return Math.max(1, Math.min(group?.requiredApprovals ?? 1, eligible));
+  return client.membership.count({ where: { groupId, canApprove: true, userId: { not: submitterId } } });
 }

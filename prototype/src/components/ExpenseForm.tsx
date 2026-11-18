@@ -132,6 +132,10 @@ export function ExpenseForm({
 
       <fieldset>
         <legend className="label">Participants</legend>
+        <label className="mb-2 flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={selected.includes(payerId)} onChange={() => toggle(payerId)} />
+          Payer ({members.find((m) => m.id === payerId)?.name}) also shares this expense
+        </label>
         <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200">
           {members.map((m, i) => {
             const on = selected.includes(m.id);
@@ -141,6 +145,9 @@ export function ExpenseForm({
                 <label className="flex min-w-40 flex-1 items-center gap-2 text-sm">
                   <input type="checkbox" name="participants" value={m.id} checked={on} onChange={() => toggle(m.id)} />
                   {m.name}
+                  {m.id === payerId && (
+                    <span className="rounded bg-indigo-50 px-1.5 py-0.5 text-xs font-medium text-indigo-700">Payer</span>
+                  )}
                 </label>
                 {on && method === "PERCENT" && (
                   <span className="flex items-center gap-1">

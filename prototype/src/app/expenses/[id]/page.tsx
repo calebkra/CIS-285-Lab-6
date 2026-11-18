@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCurrentUser } from "@/lib/session";
-import { getExpenseDetail, requiredApprovalsFor } from "@/lib/data";
+import { eligibleReviewerCount, getExpenseDetail, requiredApprovalsFor } from "@/lib/data";
 import { formatCents } from "@/lib/money";
 import { fmtDate, ReviewForm, ShareList, StatusBadge } from "@/components/ui";
 
@@ -14,6 +14,7 @@ export default async function ExpensePage({ params }: { params: Promise<{ id: st
   if (!detail) notFound();
   const { expense: e, canReview, alreadyApproved } = detail;
   const need = e.status === "PENDING" ? await requiredApprovalsFor(e.groupId, e.submitterId) : e.approvals.length;
+  const eligible = e.status === "PENDING" ? await eligibleReviewerCount(e.groupId, e.submitterId) : need;
   return (
     <div className="mx-auto max-w-2xl space-y-4">
       <Link href={`/groups/${e.groupId}`} className="text-sm text-indigo-700 hover:underline">← {e.group.name}</Link>
@@ -38,6 +39,12 @@ export default async function ExpensePage({ params }: { params: Promise<{ id: st
           <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
             Awaiting approval ({e.approvals.length} of {need}) — this expense does not affect balances yet.
             {alreadyApproved && " You have already approved it."}
+            {eligible < need && (
+              <span className="mt-1 block font-medium text-rose-800">
+                Only {eligible} approver{eligible === 1 ? " is" : "s are"} eligible (the submitter can’t review their own
+                expense), so this can’t reach {need}. An organizer must lower the requirement or add an approver.
+              </span>
+            )}
           </p>
         )}
         {e.approvals.length > 0 && (

@@ -6,7 +6,7 @@ import { netFor } from "@/lib/balances";
 import { formatCents } from "@/lib/money";
 import { Balance, Empty, ExpenseSummary, fmtDate } from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
-import { updateApprovalPolicy } from "@/app/actions";
+import { setApprover, updateApprovalPolicy } from "@/app/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -55,6 +55,16 @@ export default async function GroupPage({
                 <div>
                   <p className="font-medium">{m.user.name}{m.userId === user.id && " (you)"}</p>
                   <p className="muted">{m.isOrganizer ? "Organizer" : "Member"}{m.canApprove ? " · Approver" : ""}</p>
+                  {me?.isOrganizer && (
+                    <form action={setApprover} className="mt-1">
+                      <input type="hidden" name="groupId" value={group.id} />
+                      <input type="hidden" name="userId" value={m.userId} />
+                      <input type="hidden" name="canApprove" value={m.canApprove ? "false" : "true"} />
+                      <SubmitButton className="text-xs font-medium text-indigo-700 hover:underline" pendingText="Saving…">
+                        {m.canApprove ? "Remove approver role" : "Make approver"}
+                      </SubmitButton>
+                    </form>
+                  )}
                 </div>
                 <span className="text-sm">
                   {(() => {
