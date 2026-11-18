@@ -7,8 +7,50 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model EnvironmentCheck {
-  id        Int      @id @default(autoincrement())
-  message   String
-  createdAt DateTime @default(now())
+model Group {
+  id        Int       @id @default(autoincrement())
+  name      String
+  createdAt DateTime  @default(now())
+  members   Member[]
+  expenses  Expense[]
+
+  @@map("groups")
+}
+
+model Member {
+  id        Int       @id @default(autoincrement())
+  name      String
+  groupId   Int
+  group     Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+  paidExpenses Expense[] @relation("ExpensePayer")
+  shares    ExpenseParticipant[]
+
+  @@unique([groupId, name])
+  @@map("members")
+}
+
+model Expense {
+  id           Int       @id @default(autoincrement())
+  description  String
+  amountCents  Int
+  payerId      Int
+  payer        Member    @relation("ExpensePayer", fields: [payerId], references: [id], onDelete: Restrict)
+  groupId      Int
+  group        Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  createdAt    DateTime  @default(now())
+  participants ExpenseParticipant[]
+
+  @@map("expenses")
+}
+
+model ExpenseParticipant {
+  expenseId Int
+  memberId  Int
+  shareCents Int
+  expense   Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  member    Member  @relation(fields: [memberId], references: [id], onDelete: Restrict)
+
+  @@id([expenseId, memberId])
+  @@map("expense_participants")
 }

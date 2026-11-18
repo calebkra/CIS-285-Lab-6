@@ -1,103 +1,118 @@
-import Image from "next/image";
+"use client";
+
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { formatCents } from "@/lib/splitsmart";
+
+type Member = { id: number; name: string };
+type Participant = { memberId: number; shareCents: number; member: Member };
+type Expense = { id: number; description: string; amountCents: number; payer: Member; participants: Participant[] };
+type Group = { id: number; name: string; members: Member[]; expenses: Expense[] };
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [groupName, setGroupName] = useState("");
+  const [memberName, setMemberName] = useState("");
+  const [description, setDescription] = useState("");
+  const [amount, setAmount] = useState("");
+  const [payerId, setPayerId] = useState("");
+  const [participantIds, setParticipantIds] = useState<number[]>([]);
+  const [message, setMessage] = useState<{ text: string; type: "error" | "success" } | null>(null);
+  const [loading, setLoading] = useState(true);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+  const loadGroups = useCallback(async (preferredId?: number) => {
+    const response = await fetch("/api/groups", { cache: "no-store" });
+    if (!response.ok) throw new Error("Could not load groups.");
+    const data: Group[] = await response.json();
+    setGroups(data);
+    setSelectedId((current) => preferredId ?? (current && data.some((group) => group.id === current) ? current : data[0]?.id ?? null));
+  }, []);
+
+  useEffect(() => {
+    loadGroups().catch((error) => setMessage({ text: error.message, type: "error" })).finally(() => setLoading(false));
+  }, [loadGroups]);
+
+  const selected = useMemo(() => groups.find((group) => group.id === selectedId) ?? null, [groups, selectedId]);
+  const balances = useMemo(() => {
+    if (!selected) return [];
+    const totals = new Map(selected.members.map((member) => [member.id, 0]));
+    for (const expense of selected.expenses) {
+      totals.set(expense.payer.id, (totals.get(expense.payer.id) ?? 0) + expense.amountCents);
+      for (const participant of expense.participants) {
+        totals.set(participant.memberId, (totals.get(participant.memberId) ?? 0) - participant.shareCents);
+      }
+    }
+    return selected.members.map((member) => ({ ...member, balanceCents: totals.get(member.id) ?? 0 }));
+  }, [selected]);
+  const balanceSum = balances.reduce((sum, member) => sum + member.balanceCents, 0);
+
+  async function submitGroup(event: React.FormEvent) {
+    event.preventDefault();
+    setMessage(null);
+    const response = await fetch("/api/groups", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: groupName }) });
+    const data = await response.json();
+    if (!response.ok) return setMessage({ text: data.error, type: "error" });
+    setGroupName("");
+    await loadGroups(data.id);
+    setMessage({ text: `${data.name} created.`, type: "success" });
+  }
+
+  async function submitMember(event: React.FormEvent) {
+    event.preventDefault();
+    if (!selected) return;
+    setMessage(null);
+    const response = await fetch(`/api/groups/${selected.id}/members`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: memberName }) });
+    const data = await response.json();
+    if (!response.ok) return setMessage({ text: data.error, type: "error" });
+    setMemberName("");
+    await loadGroups(selected.id);
+    setMessage({ text: `${data.name} added.`, type: "success" });
+  }
+
+  async function createExpense(event: React.FormEvent) {
+    event.preventDefault();
+    if (!selected) return;
+    setMessage(null);
+    const response = await fetch("/api/expenses", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ groupId: selected.id, description, amount, payerId: Number(payerId), participantIds }) });
+    const data = await response.json();
+    if (!response.ok) return setMessage({ text: data.error, type: "error" });
+    setDescription(""); setAmount(""); setPayerId(""); setParticipantIds([]);
+    await loadGroups(selected.id);
+    setMessage({ text: "Expense recorded.", type: "success" });
+  }
+
+  function toggleParticipant(id: number) {
+    setParticipantIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
+  }
+
+  function selectGroup(id: number) {
+    setSelectedId(id); setPayerId(""); setParticipantIds([]); setMessage(null);
+  }
+
+  return (
+    <main className="shell">
+      <header className="topbar">
+        <div><p className="eyebrow">Shared expenses</p><h1>SplitSmart</h1></div>
+        <form className="group-create" onSubmit={submitGroup}><label className="sr-only" htmlFor="group-name">Group name</label><input id="group-name" value={groupName} onChange={(event) => setGroupName(event.target.value)} placeholder="New group name" /><button type="submit">Create group</button></form>
+      </header>
+      {message && <div className={`notice ${message.type}`} role="status">{message.text}</div>}
+      <div className="workspace">
+        <aside className="sidebar">
+          <div className="section-heading"><p>Groups</p><span>{groups.length}</span></div>
+          {loading ? <p className="empty">Loading...</p> : groups.length === 0 ? <p className="empty">Create a group to begin.</p> : <div className="group-list">{groups.map((group) => <button key={group.id} type="button" className={group.id === selectedId ? "group-row active" : "group-row"} onClick={() => selectGroup(group.id)}><span>{group.name}</span><small>{group.members.length} members</small></button>)}</div>}
+        </aside>
+        <section className="content">
+          {!selected ? <div className="start-state"><h2>Start with a group</h2><p>Create a group, then add the people who will share expenses.</p></div> : <>
+            <div className="selected-title"><div><p className="eyebrow">Current group</p><h2>{selected.name}</h2></div><span>{selected.expenses.length} expense{selected.expenses.length === 1 ? "" : "s"}</span></div>
+            <div className="member-panel"><div className="section-heading"><p>Members</p><span>{selected.members.length}</span></div><form className="inline-form" onSubmit={submitMember}><label className="sr-only" htmlFor="member-name">Member name</label><input id="member-name" value={memberName} onChange={(event) => setMemberName(event.target.value)} placeholder="Member name" /><button type="submit">Add</button></form><div className="members">{selected.members.map((member) => <span key={member.id}>{member.name}</span>)}{selected.members.length === 0 && <p className="empty">No members yet.</p>}</div></div>
+            <div className="main-grid">
+              <section className="panel expense-form-panel"><div className="section-heading"><p>Record expense</p></div><form className="expense-form" onSubmit={createExpense}><label>Description<input value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Dinner, supplies, rent..." /></label><label>Amount (USD)<input value={amount} onChange={(event) => setAmount(event.target.value)} inputMode="decimal" placeholder="60.00" /></label><label>Payer<select value={payerId} onChange={(event) => setPayerId(event.target.value)} disabled={selected.members.length === 0}><option value="">Select payer</option>{selected.members.map((member) => <option key={member.id} value={member.id}>{member.name}</option>)}</select></label><fieldset><legend>Participants</legend><div className="participant-grid">{selected.members.map((member) => <label key={member.id} className="check"><input type="checkbox" checked={participantIds.includes(member.id)} onChange={() => toggleParticipant(member.id)} /><span>{member.name}</span></label>)}</div>{selected.members.length === 0 && <p className="empty">Add members before recording an expense.</p>}</fieldset><button className="primary" type="submit" disabled={selected.members.length === 0}>Record expense</button></form></section>
+              <section className="panel balances-panel"><div className="section-heading"><p>Balances</p><span className={balanceSum === 0 ? "balanced" : ""}>{balanceSum === 0 ? "Balanced" : "Check"}</span></div><div className="balance-list">{balances.map((member) => <div className="balance-row" key={member.id}><span>{member.name}</span><strong className={member.balanceCents > 0 ? "positive" : member.balanceCents < 0 ? "negative" : ""}>{member.balanceCents > 0 ? "+" : ""}{formatCents(member.balanceCents)}</strong></div>)}{balances.length === 0 && <p className="empty">Balances appear after members and expenses are added.</p>}</div></section>
+            </div>
+            <section className="panel history-panel"><div className="section-heading"><p>Expense history</p><span>{selected.expenses.length}</span></div>{selected.expenses.length === 0 ? <p className="empty">No expenses recorded.</p> : <div className="history-list">{selected.expenses.map((expense) => <article key={expense.id}><div><h3>{expense.description}</h3><p>Paid by <strong>{expense.payer.name}</strong></p></div><div className="history-shares">{expense.participants.map((participant) => <span key={participant.memberId}>{participant.member.name} {formatCents(participant.shareCents)}</span>)}</div><strong className="amount">{formatCents(expense.amountCents)}</strong></article>)}</div>}</section>
+          </>}
+        </section>
+      </div>
+    </main>
   );
 }
